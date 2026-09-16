@@ -253,6 +253,10 @@ function selectMesh(mesh) {
   }
 
   showInfoPanel(mesh.name, catKey);
+
+  // no celular a barra lateral e uma gaveta sobreposta - fecha ela ao
+  // selecionar pra revelar o modelo 3D + painel de detalhes
+  if (window.matchMedia("(max-width: 768px)").matches) closeSidebar();
 }
 
 function showInfoPanel(nodeName, catKey) {
@@ -342,6 +346,10 @@ function meshAtEvent(event) {
 }
 
 renderer.domElement.addEventListener("click", (event) => {
+  if (longPressFired) {
+    longPressFired = false; // toque longo ja tratou a selecao, ignora o click sintetico que vem junto
+    return;
+  }
   const mesh = meshAtEvent(event);
   if (mesh) selectMesh(mesh);
 });
@@ -403,6 +411,61 @@ renderer.domElement.addEventListener("contextmenu", (event) => {
   selectMesh(mesh);
   showContextMenu(event.clientX, event.clientY, mesh);
 });
+
+// --- toque longo (celular) equivale ao botao direito ---
+let touchTimer = null;
+let touchStartPos = null;
+let longPressFired = false;
+
+renderer.domElement.addEventListener("touchstart", (event) => {
+  if (event.touches.length !== 1) {
+    clearTimeout(touchTimer);
+    return;
+  }
+  const touch = event.touches[0];
+  touchStartPos = { x: touch.clientX, y: touch.clientY };
+  clearTimeout(touchTimer);
+  touchTimer = setTimeout(() => {
+    const mesh = meshAtEvent(touch);
+    if (mesh) {
+      longPressFired = true;
+      selectMesh(mesh);
+      showContextMenu(touch.clientX, touch.clientY, mesh);
+      if (navigator.vibrate) navigator.vibrate(15);
+    }
+  }, 550);
+}, { passive: true });
+
+renderer.domElement.addEventListener("touchmove", (event) => {
+  if (!touchStartPos || event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  const dx = touch.clientX - touchStartPos.x;
+  const dy = touch.clientY - touchStartPos.y;
+  if (Math.hypot(dx, dy) > 10) clearTimeout(touchTimer); // arrastando (orbit) cancela o toque longo
+}, { passive: true });
+
+renderer.domElement.addEventListener("touchend", () => {
+  clearTimeout(touchTimer);
+  touchStartPos = null;
+}, { passive: true });
+
+// --- gaveta da lista lateral (celular) ---
+const sidebarEl = document.getElementById("sidebar");
+const sidebarToggleBtn = document.getElementById("sidebar-toggle");
+const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+
+function openSidebar() {
+  sidebarEl.classList.add("open");
+  sidebarBackdrop.classList.add("open");
+}
+function closeSidebar() {
+  sidebarEl.classList.remove("open");
+  sidebarBackdrop.classList.remove("open");
+}
+sidebarToggleBtn.addEventListener("click", () => {
+  sidebarEl.classList.contains("open") ? closeSidebar() : openSidebar();
+});
+sidebarBackdrop.addEventListener("click", closeSidebar);
 
 window.addEventListener("click", (event) => {
   if (!ctxMenu.hidden && !ctxMenu.contains(event.target)) hideContextMenu();

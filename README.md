@@ -18,6 +18,32 @@ Depois abra `http://localhost:8080/web/index.html` no navegador.
 (O `.claude/launch.json` do projeto pai já tem essa configuração pronta como
 "anatomia-fono-3d" para quem estiver usando o Claude Code / Claude Desktop.)
 
+## Como abrir no celular
+
+A interface já é responsiva (barra lateral vira uma gaveta, painel de detalhes
+ocupa a tela toda, toque longo numa peça abre o mesmo menu do botão direito).
+Faltam só decidir **como o celular alcança o app**:
+
+**Opção A — GitHub Pages (recomendado, funciona de qualquer lugar, sem PC ligado)**
+
+O repositório é público, então é só ativar uma vez:
+1. No GitHub, abra o repositório → **Settings → Pages**.
+2. Em "Build and deployment" → Source, escolha **Deploy from a branch**.
+3. Branch: **main**, pasta: **/ (root)** → Save.
+4. Em 1-2 minutos o site fica disponível em
+   `https://gubertbrunoalexandre-cloud.github.io/Anatomia-fono-3D/`
+   (a página raiz redireciona automaticamente pra `web/index.html`).
+
+Depois disso, qualquer atualização enviada (`git push`) pro branch `main`
+atualiza o site automaticamente — não precisa repetir esse processo.
+
+**Opção B — Mesma rede Wi-Fi (só funciona com o PC ligado e o servidor rodando)**
+
+1. Descubra o IP local do PC (`ipconfig` no Windows, procure "Endereço IPv4").
+2. Rode o servidor normalmente (`python -m http.server 8080 --directory anatomia-fono-3d`).
+3. No celular, na mesma rede Wi-Fi, abra `http://<IP-DO-PC>:8080/web/index.html`.
+4. Pode precisar liberar a porta 8080 no firewall do Windows na primeira vez.
+
 ## Estrutura do projeto
 
 ```
@@ -59,10 +85,14 @@ ver seção de descrições abaixo).
 - **A lista lateral acompanha a seleção**: ao selecionar uma peça no modelo
   3D, a categoria correspondente abre sozinha na lista e rola até o item
   destacado — não precisa caçar peça por peça na árvore lateral.
-- **Menu de contexto (botão direito)**: clicar com o botão direito numa peça
-  do modelo 3D abre um menu com Selecionar, Ocultar, Isolar, Mostrar tudo e
-  Pesquisar sobre a estrutura — sem precisar ir até a barra de ferramentas ou
-  a lista lateral.
+- **Menu de contexto (botão direito, ou toque longo no celular)**: clicar com
+  o botão direito (ou manter o dedo pressionado ~0,5s) numa peça do modelo 3D
+  abre um menu com Selecionar, Ocultar, Isolar, Mostrar tudo e Pesquisar sobre
+  a estrutura — sem precisar ir até a barra de ferramentas ou a lista lateral.
+- **Responsivo para celular**: em telas estreitas a lista lateral vira uma
+  gaveta (botão ☰ no canto superior esquerdo) que fecha sozinha ao selecionar
+  uma peça, e o painel de detalhes ocupa a tela toda. Controles de câmera por
+  toque (um dedo gira, dois dedos afasta/aproxima) já vêm prontos do Three.js.
 - **Ocultar/mostrar peças individualmente**: cada item da lista lateral tem um
   ícone de olho (👁 / 🚫) que alterna a visibilidade daquela malha específica
   sem descarregá-la da cena. "Mostrar tudo", "Isolar selecionada" e o menu de
