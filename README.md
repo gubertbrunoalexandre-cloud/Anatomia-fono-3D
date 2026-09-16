@@ -2,9 +2,10 @@
 
 Ferramenta de estudo de anatomia 3D em português, cobrindo cabeça e pescoço por
 completo: cérebro, ossos do crânio, músculos do pescoço, laringe/pregas vocais,
-cavidade oral e língua, faringe, ATM, os 11 nervos cranianos do currículo de
-Fonoaudiologia (I–V, VII, IX–XII) e regiões de superfície (o mais próximo que o
-dataset fonte tem de "pele", que não existe como malha separada).
+cavidade oral e língua, faringe, ATM, cartilagens da orelha e do nariz, os 11
+nervos cranianos do currículo de Fonoaudiologia (I–V, VII, IX–XII) e regiões de
+superfície (o mais próximo que o dataset fonte tem de "pele", que não existe
+como malha separada).
 
 ## Como rodar
 
@@ -22,25 +23,60 @@ Depois abra `http://localhost:8080/web/index.html` no navegador.
 ```
 anatomia-fono-3d/
 ├── data/
-│   ├── blender_source/Startup.blend   # fonte original do Z-Anatomy (306 MB, nao versionar)
-│   ├── TA2.csv                         # Terminologia Anatomica multi-idioma (Z-Anatomy)
-│   └── glb/                            # modelos exportados (18 arquivos .glb + manifest.json)
+│   ├── blender_source/Startup.blend        # fonte original do Z-Anatomy (306 MB, nao versionar)
+│   ├── TA2.csv                              # Terminologia Anatomica multi-idioma (Z-Anatomy)
+│   ├── descriptions_pt_overrides.json       # traducoes PT-BR (persiste entre reexportacoes)
+│   ├── descriptions_fallback.json           # textos de conhecimento geral p/ estruturas sem artigo
+│   ├── photos.json                          # config de fotos por estrutura (ver abaixo)
+│   ├── photos/                              # arquivos de imagem referenciados por photos.json
+│   └── glb/                                 # modelos exportados (19 arquivos .glb + manifest.json)
 ├── scripts/
-│   └── export_head_neck.py             # script headless do Blender que gera os .glb
+│   └── export_head_neck.py                  # script headless do Blender que gera os .glb
 ├── web/
 │   ├── index.html
-│   └── js/main.js                      # visualizador Three.js
+│   └── js/main.js                           # visualizador Three.js
 └── README.md
 ```
 
-## Categorias exportadas (18)
+## Categorias exportadas (19)
 
 Laringe e pregas vocais · Cavidade oral e língua · Faringe · ATM · Nervos
 cranianos I, II, III, IV, V, VII, IX, X, XI, XII (cada um sua própria categoria)
-· Cérebro · Ossos do crânio · Músculos do pescoço · Regiões de superfície.
+· Cérebro · Ossos do crânio · Músculos do pescoço · Regiões de superfície ·
+Cartilagens da orelha e nariz.
 
-~532 objetos de geometria únicos, ~22 MB no total (carregados sob demanda por
-categoria, não tudo de uma vez).
+268 estruturas únicas (nome+descrição), ~553 objetos de geometria, ~23 MB no
+total (carregados sob demanda por categoria, não tudo de uma vez). **100% das
+268 estruturas têm descrição em português** (real ou de conhecimento geral,
+ver seção de descrições abaixo).
+
+## Funcionalidades do visualizador
+
+- **Seleção visual na própria malha**: clicar numa peça (no 3D ou na lista)
+  troca o material dela por um destaque azul emissivo — não desenha caixa
+  delimitadora ao redor. Volta ao material normal ao desselecionar.
+- **Ocultar/mostrar peças individualmente**: cada item da lista lateral tem um
+  ícone de olho (👁 / 🚫) que alterna a visibilidade daquela malha específica
+  sem descarregá-la da cena. "Mostrar tudo" e "Isolar selecionada" também
+  sincronizam esses ícones.
+- **Painel de informação**: nome em português (Terminologia Anatomica) com o
+  nome em inglês como referência, descrição detalhada, espaço para foto
+  (placeholder por enquanto — ver "Como adicionar fotos" abaixo) e um botão
+  que abre uma busca do Google (`nome + anatomia função`) em nova aba.
+- **Busca** por nome (português ou inglês) na lista lateral.
+
+## Como adicionar fotos das estruturas
+
+Sem precisar mexer em nenhum código:
+
+1. Coloque o arquivo de imagem (jpg/png/webp) em `data/photos/`.
+2. Abra `data/photos.json` e adicione uma linha:
+   `"nome da estrutura em ingles": "nome-do-arquivo.jpg"`
+   (o nome-chave é normalizado automaticamente — minúsculas, sem pontuação —
+   então não precisa se preocupar com maiúsculas/acentos exatos, mas use o
+   nome em inglês que aparece como "(en: ...)" no painel de detalhes).
+3. Salve e recarregue a página. Se o arquivo não existir ou o nome não bater,
+   o placeholder "foto em breve" continua aparecendo — nunca quebra a página.
 
 ## Pipeline de dados
 
@@ -76,25 +112,31 @@ categoria, não tudo de uma vez).
      Z-Anatomy) — cobertura de ~97% dos nomes do dataset inteiro.
    - Extrai descrições anatômicas dos blocos de texto internos do `.blend`
      (`bpy.data.texts`, um artigo por estrutura, derivado da Wikipédia) e grava
-     tudo em `data/glb/manifest.json` como `descriptions_en`.
+     tudo em `manifest.json` como `descriptions_en`.
    - Exporta um `.glb` por categoria.
-3. As 377 descrições em inglês foram traduzidas para português (PT-BR,
-   terminologia médica/anatômica) e gravadas em `manifest.json` como
-   `descriptions_pt` — é essa chave que o app usa; `descriptions_en` fica como
-   fallback caso alguma estrutura nova apareça sem tradução ainda.
+   - No final, **mescla automaticamente** `data/descriptions_pt_overrides.json`
+     (traduções PT-BR reais) e `data/descriptions_fallback.json` (textos de
+     conhecimento geral para estruturas sem artigo-fonte) para dentro do
+     `manifest.json`, como `descriptions_pt` e `descriptions_fallback`. Esses
+     dois arquivos **não são gerados pelo script** — são mantidos à parte
+     justamente para sobreviver a reexportações sem precisar retraduzir nada.
+     O app usa `descriptions_pt` primeiro, cai para `descriptions_fallback`
+     (mostrando um aviso de "baseado em conhecimento geral"), e só usa
+     `descriptions_en` como último recurso, se alguma estrutura nova for
+     adicionada e ainda não tiver sido traduzida.
 
-Para regerar os `.glb` depois de qualquer ajuste no script:
+Para regerar os `.glb` depois de qualquer ajuste no script (as traduções
+existentes são preservadas automaticamente):
 
 ```bash
 "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe" --background ^
   "data\blender_source\Startup.blend" --python "scripts\export_head_neck.py"
 ```
 
-Se novas categorias/estruturas forem adicionadas depois, as descrições novas
-ficam só em `descriptions_en` até alguém (ou uma sessão futura) traduzir e
-mesclar em `descriptions_pt` (ver `scripts/export_head_neck.py`, seção
-`descriptions`, e o histórico desta sessão para o processo usado — tradução em
-lote via agentes, arquivo por arquivo, mesclado por chave normalizada).
+Se novas categorias/estruturas forem adicionadas, suas descrições só existirão
+em `descriptions_en` até alguém traduzir e adicionar a chave correspondente
+(nome normalizado: minúsculo, sem acentos/pontuação) em
+`descriptions_pt_overrides.json` ou `descriptions_fallback.json`.
 
 ## Licenciamento e atribuição (obrigatório manter visível no app)
 
@@ -103,7 +145,8 @@ lote via agentes, arquivo por arquivo, mesclado por chave normalizada).
 - **Cranial Nerves and Foramina** — University of Dundee, CAHID, CC-BY 4.0.
 - **Terminologia em português** — tradução de Ana Teresa Bigio para o Z-Anatomy.
 - **Descrições textuais** — adaptadas da Wikipédia (CC BY-SA 3.0) e traduzidas
-  para português.
+  para português; um pequeno conjunto (39 estruturas) usa texto de conhecimento
+  anatômico geral escrito para este projeto, sinalizado como tal no app.
 
 Uso comercial é permitido em todas essas licenças, desde que a atribuição seja
 mantida e qualquer obra derivada continue sob licença compatível (ShareAlike).
@@ -113,6 +156,25 @@ mantida e qualquer obra derivada continue sob licença compatível (ShareAlike).
 "Anatomy of the Inner Ear" (Univ. Dundee, CC-BY-NC-SA 4.0) e "Kidney" (Lissie
 Cowley, CC-BY-NC 4.0). Se o escopo do app um dia incluir ouvido interno, essas
 peças precisam ser substituídas por outra fonte compatível com uso comercial.
+
+## Cartilagens de orelha, nariz e olho — investigação
+
+Verificado diretamente no dataset fonte (não só no recorte já exportado):
+
+- **Orelha**: existe cartilagem real (não placeholder) para hélice, anti-hélice,
+  crura da anti-hélice, trago e antitrago, com contagem de polígonos consistente
+  com geometria de verdade (39 a 466 faces cada). Incluídas na categoria
+  "Cartilagens da orelha e nariz", junto com pontos de referência de superfície
+  do mesmo complexo cartilaginoso (concha, cymba conchae, eminência da concha,
+  lóbulo da aurícula).
+- **Nariz**: existe cartilagem septal nasal, cartilagem alar maior e processo
+  lateral da cartilagem septal nasal, todas com geometria real (344–360 faces).
+  Também incluídas.
+- **Olho**: **não existe cartilagem** no dataset, e isso é anatomicamente
+  correto — a estrutura de sustentação da pálpebra (por vezes chamada de forma
+  imprecisa de "cartilagem tarsal") é na verdade tecido conjuntivo fibroso
+  denso, não cartilagem hialina/elástica. A ausência não é uma lacuna do
+  dataset, é a anatomia real. Nenhuma estrutura foi forçada nesse ponto.
 
 ## Limitações conhecidas / próximos passos
 
@@ -126,9 +188,6 @@ peças precisam ser substituídas por outra fonte compatível com uso comercial.
   etc.), não a paleta original do Z-Anatomy — o material original do Blender usa
   um shader customizado que não é traduzido corretamente pelo exportador glTF
   padrão (veio com `emissive` branco puro, estourando tudo pra branco).
-- **~30% das estruturas não têm descrição textual** (não existe artigo
-  correspondente nos blocos de texto do arquivo fonte — mais comum em acidentes
-  ósseos pequenos e subdivisões muito finas).
 - **Malhas de nervos são relativamente pesadas** (curvas com bevel convertidas
   para malha) — pode valer a pena decimar no Blender se a performance em
   dispositivos mais fracos for um problema.
@@ -138,3 +197,5 @@ peças precisam ser substituídas por outra fonte compatível com uso comercial.
   exportação, seguindo o mesmo padrão dos outros nervos).
 - Sem modo quiz ainda (mencionado no briefing original como funcionalidade do
   Anatomy 3D Atlas a ser eventualmente replicada).
+- Sistema de fotos ainda sem nenhuma foto real carregada (estrutura pronta,
+  ver "Como adicionar fotos" acima).

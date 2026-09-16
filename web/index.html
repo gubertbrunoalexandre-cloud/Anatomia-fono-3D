@@ -86,17 +86,31 @@
   }
   .struct-list.open { display: block; }
   .struct-item {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 4px 3px 6px;
+    border-radius: 4px;
+  }
+  .struct-item:hover { background: var(--panel-2); }
+  .struct-item.active { background: rgba(79,176,255,0.18); }
+  .struct-item.active .struct-label { color: var(--accent); }
+  .struct-label {
     font-size: 11.5px;
     color: var(--text-dim);
-    padding: 3px 6px;
-    border-radius: 4px;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
   }
-  .struct-item:hover { background: var(--panel-2); color: var(--text); }
-  .struct-item.active { background: rgba(79,176,255,0.18); color: var(--accent); }
+  .struct-item:hover .struct-label { color: var(--text); }
+  .struct-eye {
+    background: none; border: none; cursor: pointer;
+    font-size: 11px; line-height: 1; padding: 2px 4px;
+    border-radius: 3px; opacity: 0.55;
+    filter: grayscale(0);
+  }
+  .struct-eye:hover { opacity: 1; background: var(--border); }
+  .struct-eye.hidden-eye { opacity: 0.35; filter: grayscale(1); }
 
   #viewer { flex: 1; position: relative; }
   #canvas-holder { width: 100%; height: 100%; }
@@ -151,6 +165,44 @@
   #info-panel .info-desc.empty {
     color: var(--text-dim); font-style: italic;
   }
+  #info-panel .info-desc .generic-note {
+    display: block;
+    margin-top: 10px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  #info-photo {
+    margin: 4px 0 14px;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--panel-2);
+    border: 1px dashed var(--border);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #info-photo img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  #info-photo .photo-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--text-dim); font-size: 11px; text-align: center; padding: 0 10px;
+  }
+  #info-photo .photo-placeholder .icon { font-size: 22px; opacity: 0.6; }
+  #info-search-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%;
+    margin-top: 16px;
+    padding: 9px 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  #info-search-btn:hover { background: var(--border); }
   #info-panel .close-btn {
     position: absolute; top: 14px; right: 14px;
     cursor: pointer; color: var(--text-dim);
@@ -211,7 +263,17 @@
       <h2 id="info-title">—</h2>
       <div class="info-english" id="info-english"></div>
       <div class="info-cat" id="info-cat">—</div>
+
+      <div id="info-photo" hidden>
+        <div class="photo-placeholder">
+          <div class="icon">📷</div>
+          <div>foto em breve</div>
+        </div>
+      </div>
+
       <div class="info-desc" id="info-desc">Selecione uma estrutura no modelo 3D ou na lista à esquerda.</div>
+
+      <button id="info-search-btn" type="button" hidden>🔎 Pesquisar sobre esta estrutura</button>
     </div>
 
     <div id="credits">

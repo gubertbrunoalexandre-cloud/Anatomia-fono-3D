@@ -102,6 +102,16 @@ CATEGORIES = {
         'submental triangle', 'anterior region of neck', 'lateral region of neck',
         'posterior region of neck', 'external nose', 'auricle',
     ],
+    "orelha_nariz_cartilagem": [
+        # cartilagens reais confirmadas no dataset (nao existe cartilagem de olho -
+        # a "cartilagem tarsal" da palpebra e tecido conjuntivo denso, nao cartilagem,
+        # e nao aparece no dataset, corretamente)
+        'helix', 'antihelix', 'tragus', 'antitragus', 'crura of antihelix',
+        'nasal septal cartilage', 'alar cartilage', 'lateral process of nasal septal cartilage',
+        # pontos de referencia de superficie do pavilhao auricular (mesmo complexo cartilaginoso)
+        'concha of auricle', 'cymba conchae', 'eminentia conchae', 'cavity of concha',
+        'lobule of auricle',
+    ],
 }
 
 SUFFIX_RE = re.compile(r'^(.*)\.([a-zA-Z0-9]{1,3})$')
@@ -361,6 +371,23 @@ def main():
         result = export_category(cat, names, lookup, ta2_pt)
         if result:
             manifest["categories"][cat] = result
+
+    # descricoes_pt e descricoes_fallback vivem em arquivos separados
+    # (data/descriptions_pt_overrides.json e data/descriptions_fallback.json),
+    # nao dentro do manifest gerado, para sobreviver a re-execucoes deste script
+    # sem precisar retraduzir nada manualmente.
+    for key, out_key in [
+        ("descriptions_pt_overrides.json", "descriptions_pt"),
+        ("descriptions_fallback.json", "descriptions_fallback"),
+    ]:
+        path = os.path.join(os.path.dirname(MANIFEST_PATH), "..", key)
+        path = os.path.normpath(path)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                manifest[out_key] = json.load(f)
+            print(f"[info] {out_key}: {len(manifest[out_key])} entradas carregadas de {path}")
+        else:
+            manifest[out_key] = {}
 
     with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)

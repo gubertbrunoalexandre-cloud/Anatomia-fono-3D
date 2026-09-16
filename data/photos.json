@@ -1,0 +1,4 @@
+{
+  "_readme": "Mapa de fotos por estrutura. Chave = nome da estrutura em ingles (o mesmo nome base usado internamente, ex.: 'Thyroid cartilage'), normalizado automaticamente pelo app (minusculo, sem acentos/pontuacao). Valor = nome do arquivo dentro de data/photos/. Para adicionar uma foto: 1) coloque o arquivo de imagem em data/photos/ 2) adicione uma linha aqui com a chave e o nome do arquivo. Nao precisa mexer em nenhum codigo.",
+  "_exemplo": "\"thyroid cartilage\": \"thyroid-cartilage.jpg\""
+}

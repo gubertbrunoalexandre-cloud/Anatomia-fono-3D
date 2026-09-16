@@ -21,6 +21,7 @@ const CATEGORY_LABELS = {
   cranio_ossos: "Ossos do crânio",
   musculos_pescoco: "Músculos do pescoço",
   regioes_superficie: "Regiões de superfície (pele)",
+  orelha_nariz_cartilagem: "Cartilagens da orelha e nariz",
 };
 
 const DEFAULT_CHECKED = new Set(["laringe"]);
@@ -29,8 +30,8 @@ const state = {
   manifest: null,
   categories: {}, // key -> { root, loaded, loading, objects: Map(name->mesh), listEl, checkboxEl, headerLoadingEl }
   selected: null, // mesh
-  boxHelper: null,
   framedOnce: false,
+  photos: null, // config data/photos.json: normalized_key -> nome do arquivo em data/photos/
 };
 
 const holder = document.getElementById("canvas-holder");
@@ -93,6 +94,17 @@ function materialForName(name) {
   return mat;
 }
 
+// material unico usado para destacar a peca selecionada (troca o material da
+// malha em vez de desenhar uma caixa ao redor dela)
+const HIGHLIGHT_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0x4fb0ff,
+  emissive: 0x1c5f9e,
+  emissiveIntensity: 0.7,
+  roughness: 0.35,
+  metalness: 0.1,
+  side: THREE.DoubleSide,
+});
+
 window.addEventListener("resize", () => {
   camera.aspect = holder.clientWidth / holder.clientHeight;
   camera.updateProjectionMatrix();
@@ -118,11 +130,21 @@ function normalizeKey(s) {
 }
 
 function lookupDescription(nodeName) {
-  if (!state.manifest) return "";
+  if (!state.manifest) return { text: "", fallback: false };
   const key = normalizeKey(baseName(nodeName));
   const pt = state.manifest.descriptions_pt && state.manifest.descriptions_pt[key];
-  if (pt) return pt;
-  return (state.manifest.descriptions_en && state.manifest.descriptions_en[key]) || "";
+  if (pt) return { text: pt, fallback: false };
+  const fb = state.manifest.descriptions_fallback && state.manifest.descriptions_fallback[key];
+  if (fb) return { text: fb, fallback: true };
+  const en = state.manifest.descriptions_en && state.manifest.descriptions_en[key];
+  if (en) return { text: en, fallback: false };
+  return { text: "", fallback: false };
+}
+
+function photoForName(nodeName) {
+  if (!state.photos) return null;
+  const key = normalizeKey(baseName(nodeName));
+  return state.photos[key] || null;
 }
 
 function displayName(nodeName) {
@@ -191,11 +213,8 @@ function setCategoryVisible(catKey, visible) {
 }
 
 function clearSelection() {
-  if (state.boxHelper) {
-    scene.remove(state.boxHelper);
-    state.boxHelper.geometry.dispose();
-    state.boxHelper.material.dispose();
-    state.boxHelper = null;
+  if (state.selected) {
+    state.selected.material = materialForName(state.selected.name);
   }
   state.selected = null;
   document.querySelectorAll(".struct-item.active").forEach((el) => el.classList.remove("active"));
@@ -204,10 +223,7 @@ function clearSelection() {
 function selectMesh(mesh) {
   clearSelection();
   state.selected = mesh;
-  const helper = new THREE.BoxHelper(mesh, 0x4fb0ff);
-  helper.material.depthTest = false;
-  scene.add(helper);
-  state.boxHelper = helper;
+  mesh.material = HIGHLIGHT_MATERIAL;
 
   const catKey = mesh.userData.category;
   const listItem = document.querySelector(`.struct-item[data-cat="${catKey}"][data-name="${CSS.escape(mesh.name)}"]`);
@@ -225,27 +241,67 @@ function showInfoPanel(nodeName, catKey) {
   const englishName = document.getElementById("info-english");
   const catLabel = document.getElementById("info-cat");
   const desc = document.getElementById("info-desc");
+  const photoBox = document.getElementById("info-photo");
+  const searchBtn = document.getElementById("info-search-btn");
 
   const pt = displayName(nodeName);
   const en = baseName(nodeName);
   title.textContent = pt;
   englishName.textContent = pt.toLowerCase() !== en.toLowerCase() ? `(en: ${en})` : "";
   catLabel.textContent = CATEGORY_LABELS[catKey] || catKey;
-  const text = lookupDescription(nodeName);
+
+  const { text, fallback } = lookupDescription(nodeName);
+  desc.innerHTML = "";
   if (text) {
-    desc.textContent = text;
     desc.classList.remove("empty");
+    const main = document.createElement("span");
+    main.textContent = text;
+    desc.appendChild(main);
+    if (fallback) {
+      const note = document.createElement("span");
+      note.className = "generic-note";
+      note.textContent = "Descrição baseada em conhecimento anatômico geral (esta estrutura ainda não tem um artigo de referência específico na base de dados).";
+      desc.appendChild(note);
+    }
   } else {
     desc.textContent = "Sem descrição disponível para esta estrutura ainda.";
     desc.classList.add("empty");
   }
+
+  photoBox.hidden = false;
+  searchBtn.hidden = false;
+  const photoFile = photoForName(nodeName);
+  photoBox.innerHTML = "";
+  if (photoFile) {
+    const img = document.createElement("img");
+    img.src = `../data/photos/${photoFile}`;
+    img.alt = pt;
+    img.onerror = () => {
+      photoBox.innerHTML = `<div class="photo-placeholder"><div class="icon">📷</div><div>foto em breve</div></div>`;
+    };
+    photoBox.appendChild(img);
+  } else {
+    photoBox.innerHTML = `<div class="photo-placeholder"><div class="icon">📷</div><div>foto em breve</div></div>`;
+  }
+
+  searchBtn.textContent = `🔎 Pesquisar sobre ${pt}`;
+  searchBtn.onclick = () => {
+    const query = `${pt} anatomia função`;
+    const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    window.open(url, "_blank", "noopener");
+  };
+
   panel.classList.add("open");
 }
 
-document.getElementById("info-close").addEventListener("click", () => {
+function closeInfoPanel() {
   document.getElementById("info-panel").classList.remove("open");
+  document.getElementById("info-photo").hidden = true;
+  document.getElementById("info-search-btn").hidden = true;
   clearSelection();
-});
+}
+
+document.getElementById("info-close").addEventListener("click", closeInfoPanel);
 
 // --- raycasting / click to select ---
 const raycaster = new THREE.Raycaster();
@@ -272,6 +328,19 @@ renderer.domElement.addEventListener("click", (event) => {
 });
 
 // --- toolbar ---
+function syncEyeIcons() {
+  document.querySelectorAll(".struct-item").forEach((item) => {
+    const catKey = item.dataset.cat;
+    const objName = item.dataset.name;
+    const cat = state.categories[catKey];
+    const mesh = cat && cat.objects.get(objName);
+    const eyeBtn = item.querySelector(".struct-eye");
+    if (!mesh || !eyeBtn) return;
+    eyeBtn.classList.toggle("hidden-eye", !mesh.visible);
+    eyeBtn.textContent = mesh.visible ? "👁" : "🚫";
+  });
+}
+
 document.getElementById("btn-isolate").addEventListener("click", () => {
   if (!state.selected) return;
   const keepBase = baseName(state.selected.name).toLowerCase();
@@ -283,6 +352,7 @@ document.getElementById("btn-isolate").addEventListener("click", () => {
       }
     });
   }
+  syncEyeIcons();
 });
 
 document.getElementById("btn-reset").addEventListener("click", () => {
@@ -292,6 +362,7 @@ document.getElementById("btn-reset").addEventListener("click", () => {
       if (child.isMesh) child.visible = true;
     });
   }
+  syncEyeIcons();
 });
 
 // --- sidebar build ---
@@ -337,12 +408,22 @@ function buildSidebar(manifest) {
     for (const objName of meta.objects) {
       const item = document.createElement("div");
       item.className = "struct-item";
-      item.textContent = displayName(objName);
-      item.title = baseName(objName); // nome em ingles no tooltip, util p/ cruzar com literatura
       item.dataset.cat = catKey;
       item.dataset.name = objName;
       item.dataset.en = baseName(objName).toLowerCase();
-      item.addEventListener("click", async (e) => {
+
+      const label = document.createElement("span");
+      label.className = "struct-label";
+      label.textContent = displayName(objName);
+      label.title = baseName(objName); // nome em ingles no tooltip, util p/ cruzar com literatura
+
+      const eyeBtn = document.createElement("button");
+      eyeBtn.className = "struct-eye";
+      eyeBtn.type = "button";
+      eyeBtn.title = "Mostrar/ocultar";
+      eyeBtn.textContent = "👁";
+
+      label.addEventListener("click", async (e) => {
         e.stopPropagation();
         checkbox.checked = true;
         await loadCategory(catKey);
@@ -350,10 +431,29 @@ function buildSidebar(manifest) {
         const mesh = state.categories[catKey].objects.get(objName);
         if (mesh) {
           mesh.visible = true;
+          eyeBtn.classList.remove("hidden-eye");
           selectMesh(mesh);
           frameSelected(mesh);
         }
       });
+
+      eyeBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        checkbox.checked = true;
+        await loadCategory(catKey);
+        setCategoryVisible(catKey, true);
+        const mesh = state.categories[catKey].objects.get(objName);
+        if (!mesh) return;
+        mesh.visible = !mesh.visible;
+        eyeBtn.classList.toggle("hidden-eye", !mesh.visible);
+        eyeBtn.textContent = mesh.visible ? "👁" : "🚫";
+        if (!mesh.visible && state.selected === mesh) {
+          closeInfoPanel();
+        }
+      });
+
+      item.appendChild(label);
+      item.appendChild(eyeBtn);
       structList.appendChild(item);
     }
     state.categories[catKey].listEl = structList;
@@ -416,9 +516,26 @@ function maybeHideLoadingOverlay() {
 
 window.__debug = { state, scene, camera, renderer, THREE };
 
+async function loadPhotosConfig() {
+  try {
+    const res = await fetch("../data/photos.json");
+    const raw = await res.json();
+    const normalized = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (k.startsWith("_")) continue; // chaves de documentacao (_readme, _exemplo)
+      normalized[normalizeKey(k)] = v;
+    }
+    state.photos = normalized;
+  } catch (err) {
+    console.warn("Nao foi possivel carregar data/photos.json", err);
+    state.photos = {};
+  }
+}
+
 async function init() {
   const res = await fetch("../data/glb/manifest.json");
   state.manifest = await res.json();
+  await loadPhotosConfig();
   buildSidebar(state.manifest);
 
   const defaultLoads = Object.keys(state.categories).filter((k) => DEFAULT_CHECKED.has(k));
