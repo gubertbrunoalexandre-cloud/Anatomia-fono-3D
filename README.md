@@ -2,10 +2,10 @@
 
 Ferramenta de estudo de anatomia 3D em português, cobrindo cabeça e pescoço por
 completo: cérebro, ossos do crânio, músculos do pescoço, laringe/pregas vocais,
-cavidade oral e língua, faringe, ATM, cartilagens da orelha e do nariz, os 11
-nervos cranianos do currículo de Fonoaudiologia (I–V, VII, IX–XII) e regiões de
-superfície (o mais próximo que o dataset fonte tem de "pele", que não existe
-como malha separada).
+cavidade oral e língua, faringe, ATM, cartilagens da orelha e do nariz, marcos
+ósseos (forames, canais, suturas), os 11 nervos cranianos do currículo de
+Fonoaudiologia (I–V, VII, IX–XII) e regiões de superfície (o mais próximo que o
+dataset fonte tem de "pele", que não existe como malha separada).
 
 ## Como rodar
 
@@ -29,7 +29,7 @@ anatomia-fono-3d/
 │   ├── descriptions_fallback.json           # textos de conhecimento geral p/ estruturas sem artigo
 │   ├── photos.json                          # config de fotos por estrutura (ver abaixo)
 │   ├── photos/                              # arquivos de imagem referenciados por photos.json
-│   └── glb/                                 # modelos exportados (19 arquivos .glb + manifest.json)
+│   └── glb/                                 # modelos exportados (20 arquivos .glb + manifest.json)
 ├── scripts/
 │   └── export_head_neck.py                  # script headless do Blender que gera os .glb
 ├── web/
@@ -38,32 +38,44 @@ anatomia-fono-3d/
 └── README.md
 ```
 
-## Categorias exportadas (19)
+## Categorias exportadas (20)
 
 Laringe e pregas vocais · Cavidade oral e língua · Faringe · ATM · Nervos
 cranianos I, II, III, IV, V, VII, IX, X, XI, XII (cada um sua própria categoria)
 · Cérebro · Ossos do crânio · Músculos do pescoço · Regiões de superfície ·
-Cartilagens da orelha e nariz.
+Cartilagens da orelha e nariz · Marcos ósseos (forames, canais, suturas).
 
-268 estruturas únicas (nome+descrição), ~553 objetos de geometria, ~23 MB no
+299 estruturas únicas (nome+descrição), ~584 objetos de geometria, ~24 MB no
 total (carregados sob demanda por categoria, não tudo de uma vez). **100% das
-268 estruturas têm descrição em português** (real ou de conhecimento geral,
+299 estruturas têm descrição em português** (real ou de conhecimento geral,
 ver seção de descrições abaixo).
 
 ## Funcionalidades do visualizador
 
-- **Seleção visual na própria malha**: clicar numa peça (no 3D ou na lista)
-  troca o material dela por um destaque azul emissivo — não desenha caixa
-  delimitadora ao redor. Volta ao material normal ao desselecionar.
+- **Seleção visual na própria malha**: clicar numa peça (no 3D, na lista ou
+  pelo menu de contexto) troca o material dela por um destaque azul emissivo —
+  não desenha caixa delimitadora ao redor. Volta ao material normal ao
+  desselecionar.
+- **A lista lateral acompanha a seleção**: ao selecionar uma peça no modelo
+  3D, a categoria correspondente abre sozinha na lista e rola até o item
+  destacado — não precisa caçar peça por peça na árvore lateral.
+- **Menu de contexto (botão direito)**: clicar com o botão direito numa peça
+  do modelo 3D abre um menu com Selecionar, Ocultar, Isolar, Mostrar tudo e
+  Pesquisar sobre a estrutura — sem precisar ir até a barra de ferramentas ou
+  a lista lateral.
 - **Ocultar/mostrar peças individualmente**: cada item da lista lateral tem um
   ícone de olho (👁 / 🚫) que alterna a visibilidade daquela malha específica
-  sem descarregá-la da cena. "Mostrar tudo" e "Isolar selecionada" também
-  sincronizam esses ícones.
+  sem descarregá-la da cena. "Mostrar tudo", "Isolar selecionada" e o menu de
+  contexto sincronizam esses ícones.
 - **Painel de informação**: nome em português (Terminologia Anatomica) com o
   nome em inglês como referência, descrição detalhada, espaço para foto
   (placeholder por enquanto — ver "Como adicionar fotos" abaixo) e um botão
   que abre uma busca do Google (`nome + anatomia função`) em nova aba.
 - **Busca** por nome (português ou inglês) na lista lateral.
+- **Marcos ósseos como pinos clicáveis**: forames, canais e suturas do crânio
+  não têm malha própria no dataset fonte (ver seção dedicada abaixo) — são
+  representados como pequenas esferas laranja posicionadas exatamente no
+  ponto anatômico correto, clicáveis como qualquer outra peça.
 
 ## Como adicionar fotos das estruturas
 
@@ -113,6 +125,11 @@ Sem precisar mexer em nenhum código:
    - Extrai descrições anatômicas dos blocos de texto internos do `.blend`
      (`bpy.data.texts`, um artigo por estrutura, derivado da Wikipédia) e grava
      tudo em `manifest.json` como `descriptions_en`.
+   - Cria pequenas esferas-marcador (`create_landmark_markers`) na posição
+     exata dos ~31 forames/canais/suturas do crânio confirmados no dataset
+     fonte, já que esses "buracos" e juntas ósseas não têm malha própria (ver
+     seção dedicada abaixo) — e as injeta no pipeline normal como se fossem
+     objetos comuns.
    - Exporta um `.glb` por categoria.
    - No final, **mescla automaticamente** `data/descriptions_pt_overrides.json`
      (traduções PT-BR reais) e `data/descriptions_fallback.json` (textos de
@@ -175,6 +192,37 @@ Verificado diretamente no dataset fonte (não só no recorte já exportado):
   imprecisa de "cartilagem tarsal") é na verdade tecido conjuntivo fibroso
   denso, não cartilagem hialina/elástica. A ausência não é uma lacuna do
   dataset, é a anatomia real. Nenhuma estrutura foi forçada nesse ponto.
+
+## Fissuras, canais, forames e suturas do crânio — investigação
+
+Verificado diretamente no dataset fonte, antes de tentar incluir: **quase
+nenhum forame, canal ou sutura nomeada do crânio tem malha 3D própria**. Isso
+faz sentido anatomicamente — um forame é ausência de osso, não um volume — mas
+o dataset nem chega a modelar a superfície ao redor do buraco: cada um existe
+só como um objeto "gancho" de 2 vértices e 0 faces, usado internamente pelo
+Z-Anatomy para ancorar um rótulo de texto flutuante.
+
+Busquei no `.blend` inteiro por todo objeto com "foramen/canal/fissure/
+suture/meatus/notch/aperture/groove/incisure/hiatus" no nome: **135
+correspondências no corpo todo, e nenhuma com geometria real** nos itens
+específicos do crânio/pescoço (as poucas exceções com malha de verdade, como
+incisuras da aurícula, já estavam nas categorias de orelha/superfície).
+Também não existem no dataset como objeto algum — nem gancho, nem malha —
+vários marcos muito conhecidos: forame jugular, forame lácero, forame
+mandibular, forame supraorbital/infraorbital, meato acústico externo/interno,
+e as suturas coronal/sagital/lambdóidea por nome próprio (só existem 4
+entradas genéricas descrevendo *tipos* de sutura: denteada, plana, serreada,
+limbosa).
+
+**Solução adotada**: para os 31 marcos que existem no dataset (mesmo sem
+malha), criei uma pequena esfera-marcador exatamente na posição 3D do ponto
+de ancoragem original e a tratei como uma peça normal no pipeline — aparece
+como um pino laranja clicável no modelo, com nome e descrição (31 das 39
+sem artigo próprio na Wikipédia; escrevi o restante). Estão na categoria
+"Marcos ósseos". Para os que **não existem em lugar nenhum do dataset**
+(forame jugular, meato acústico etc.), não há posição 3D de referência
+alguma para ancorar um marcador, então não há como incluí-los com fidelidade
+— ficam de fora até uma fonte de dados diferente ser incorporada.
 
 ## Limitações conhecidas / próximos passos
 

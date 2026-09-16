@@ -10,6 +10,7 @@ Licenca do conteudo: CC BY-SA 4.0 (Z-Anatomy) / CC BY-SA 2.1 Japan (BodyParts3D,
                       CC-BY 4.0 (Cranial Nerves and Foramina, Univ. Dundee CAHID)
 """
 import bpy
+import bmesh
 import os
 import re
 import json
@@ -113,6 +114,79 @@ CATEGORIES = {
         'lobule of auricle',
     ],
 }
+
+# Fissuras, canais, forames e suturas do cranio/pescoco. No Z-Anatomy/BodyParts3D
+# esses "buracos" e juntas osseas quase nunca tem malha propria (um forame e
+# ausencia de osso, nao um volume) - o dataset so marca a posicao com um objeto
+# "gancho" de 2 vertices (sufixo ".j", usado pelo addon original so p/ ancorar
+# o rotulo de texto flutuante). Para poder exibi-los como pontos clicaveis no
+# app, criamos uma pequena esfera-marcador na posicao exata de cada gancho e
+# deixamos ela seguir o pipeline normal de exportacao. Nome -> nome do objeto
+# gancho de origem (para pegar a posicao no mundo).
+LANDMARK_MARKERS = {
+    "Supra-orbital notch": "(Supra-orbital notch).j",
+    "Condylar canal": "Condylar canal.j",
+    "Ethmoidal notch": "Ethmoidal notch.j",
+    "Foramen caecum of frontal bone": "Foramen caecum of frontal bone.j",
+    "Foramen magnum": "Foramen magnum.j",
+    "Foramen ovale": "Foramen ovale.j",
+    "Foramen rotundum": "Foramen rotundum.j",
+    "Foramen spinosum": "Foramen spinosum.j",
+    "Groove for marginal sinus": "Groove for marginal sinus.j",
+    "Groove for middle meningeal artery": "Groove for middle meningeal artery.j",
+    "Groove for occipital sinus": "Groove for occipital sinus.j",
+    "Groove for transverse sinus": "Groove for transverse sinus.j",
+    "Groove of pterygoid hamulus": "Groove of pterygoid hamulus.j",
+    "Hypoglossal canal": "Hypoglossal canal.j",
+    "Inferior thyroid notch": "Inferior thyroid notch.j",
+    "Jugular notch of occipital bone": "Jugular notch of occipital bone.j",
+    "Mastoid notch": "Mastoid notch.j",
+    "Mental foramen": "Mental foramen.j",
+    "Optic canal": "Optic canal.j",
+    "Parietal foramen": "Parietal foramen.j",
+    "Pterygoid canal": "Pterygoid canal.j",
+    "Pterygoid notch": "Pterygoid notch.j",
+    "Superior thyroid notch": "Superior thyroid notch.j",
+    "Anterior semicircular canal": "Anterior semicircular canal.j",
+    "Lateral semicircular canal": "Lateral semicircular canal.j",
+    "Posterior semicircular canal": "Posterior semicircular canal.j",
+    "Spiral canal of cochlea": "Spiral canal of cochlea.j",
+    "Denticulate suture": "Denticulate suture.j",
+    "Limbous suture": "Limbous suture.j",
+    "Plane suture": "Plane suture.j",
+    "Serrate suture": "Serrate suture.j",
+}
+
+MARKER_RADIUS = 0.0035
+
+
+def create_marker_sphere(name, world_pos):
+    mesh = bpy.data.meshes.new(name + "__marker_mesh")
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=1, radius=MARKER_RADIUS)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = world_pos
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def create_landmark_markers():
+    """Cria as esferas-marcador e devolve a lista de nomes criados."""
+    created = []
+    missing = []
+    for name, hook_name in LANDMARK_MARKERS.items():
+        hook = bpy.data.objects.get(hook_name)
+        if hook is None:
+            missing.append(hook_name)
+            continue
+        create_marker_sphere(name, hook.matrix_world.translation.copy())
+        created.append(name)
+    if missing:
+        print(f"[aviso] marcos nao encontrados no .blend (pulados): {missing}")
+    return created
+
 
 SUFFIX_RE = re.compile(r'^(.*)\.([a-zA-Z0-9]{1,3})$')
 
@@ -227,6 +301,16 @@ def collect():
                 all_target_names.add(o.name)
                 target_base_keys.add(normalize_key(base_name(o.name)))
         category_names[cat] = names
+
+    # marcos osseos (fissuras/canais/forames/suturas) - ver create_landmark_markers():
+    # sao esferas sinteticas criadas na posicao exata dos pontos de ancoragem
+    # originais do Z-Anatomy, ja que esses "buracos"/juntas quase nunca tem
+    # malha propria no dataset fonte.
+    marker_names = create_landmark_markers()
+    category_names["marcos_osseos"] = marker_names
+    for n in marker_names:
+        all_target_names.add(n)
+        target_base_keys.add(normalize_key(base_name(n)))
 
     # descricoes: bpy.data.texts tem um bloco de texto (artigo da Wikipedia,
     # CC BY-SA 3.0) por estrutura anatomica - muito mais rico que os rotulos

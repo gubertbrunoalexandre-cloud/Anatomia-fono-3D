@@ -237,6 +237,33 @@
     line-height: 1.4;
     pointer-events: none;
   }
+
+  #ctx-menu {
+    position: fixed;
+    z-index: 50;
+    min-width: 220px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    padding: 6px;
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  #ctx-menu[hidden] { display: none; }
+  #ctx-menu .ctx-header {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    padding: 6px 10px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #ctx-menu .ctx-item {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; color: var(--text);
+    font-size: 12.5px; padding: 8px 10px;
+    border-radius: 5px; cursor: pointer;
+  }
+  #ctx-menu .ctx-item:hover { background: var(--panel-2); }
 </style>
 </head>
 <body>
@@ -287,6 +314,8 @@
       <div class="spinner"></div>
       <div class="loading-text" id="loading-text">Carregando modelos 3D...</div>
     </div>
+
+    <div id="ctx-menu" hidden></div>
   </div>
 </div>
 

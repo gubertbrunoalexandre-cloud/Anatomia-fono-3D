@@ -22,7 +22,10 @@ const CATEGORY_LABELS = {
   musculos_pescoco: "Músculos do pescoço",
   regioes_superficie: "Regiões de superfície (pele)",
   orelha_nariz_cartilagem: "Cartilagens da orelha e nariz",
+  marcos_osseos: "Marcos ósseos (forames, canais, suturas)",
 };
+
+const MARKER_CATEGORY = "marcos_osseos";
 
 const DEFAULT_CHECKED = new Set(["laringe"]);
 
@@ -92,6 +95,21 @@ function materialForName(name) {
   });
   materialCache.set(color, mat);
   return mat;
+}
+
+// marcos osseos (forames/canais/suturas) sao esferas sinteticas - cor de "pino"
+// bem distinta pra ficarem faceis de achar sobre o osso
+const MARKER_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0xff6b3d,
+  emissive: 0x7a2c10,
+  emissiveIntensity: 0.5,
+  roughness: 0.4,
+  metalness: 0.1,
+});
+
+function materialForMesh(mesh) {
+  if (mesh.userData.category === MARKER_CATEGORY) return MARKER_MATERIAL;
+  return materialForName(mesh.name);
 }
 
 // material unico usado para destacar a peca selecionada (troca o material da
@@ -187,7 +205,7 @@ async function loadCategory(catKey) {
         child.name = origName;
         cat.objects.set(child.name, child);
         child.userData.category = catKey;
-        child.material = materialForName(child.name);
+        child.material = materialForMesh(child);
       }
     });
     scene.add(root);
@@ -214,7 +232,7 @@ function setCategoryVisible(catKey, visible) {
 
 function clearSelection() {
   if (state.selected) {
-    state.selected.material = materialForName(state.selected.name);
+    state.selected.material = materialForMesh(state.selected);
   }
   state.selected = null;
   document.querySelectorAll(".struct-item.active").forEach((el) => el.classList.remove("active"));
@@ -229,7 +247,9 @@ function selectMesh(mesh) {
   const listItem = document.querySelector(`.struct-item[data-cat="${catKey}"][data-name="${CSS.escape(mesh.name)}"]`);
   if (listItem) {
     listItem.classList.add("active");
-    listItem.scrollIntoView({ block: "nearest" });
+    const list = listItem.closest(".struct-list");
+    if (list) list.classList.add("open");
+    listItem.scrollIntoView({ block: "center" });
   }
 
   showInfoPanel(mesh.name, catKey);
@@ -285,11 +305,7 @@ function showInfoPanel(nodeName, catKey) {
   }
 
   searchBtn.textContent = `🔎 Pesquisar sobre ${pt}`;
-  searchBtn.onclick = () => {
-    const query = `${pt} anatomia função`;
-    const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-    window.open(url, "_blank", "noopener");
-  };
+  searchBtn.onclick = () => searchStructure(nodeName);
 
   panel.classList.add("open");
 }
@@ -307,7 +323,7 @@ document.getElementById("info-close").addEventListener("click", closeInfoPanel);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
-renderer.domElement.addEventListener("click", (event) => {
+function meshAtEvent(event) {
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -322,10 +338,79 @@ renderer.domElement.addEventListener("click", (event) => {
     }
   }
   const hits = raycaster.intersectObjects(pickables, false);
-  if (hits.length > 0) {
-    selectMesh(hits[0].object);
-  }
+  return hits.length > 0 ? hits[0].object : null;
+}
+
+renderer.domElement.addEventListener("click", (event) => {
+  const mesh = meshAtEvent(event);
+  if (mesh) selectMesh(mesh);
 });
+
+// --- menu de contexto (botao direito) ---
+const ctxMenu = document.getElementById("ctx-menu");
+
+function hideContextMenu() {
+  ctxMenu.hidden = true;
+}
+
+function showContextMenu(x, y, mesh) {
+  const pt = displayName(mesh.name);
+  ctxMenu.innerHTML = "";
+
+  const makeItem = (label, onClick) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ctx-item";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      onClick();
+      hideContextMenu();
+    });
+    ctxMenu.appendChild(btn);
+  };
+
+  const nameEl = document.createElement("div");
+  nameEl.className = "ctx-header";
+  nameEl.textContent = pt;
+  ctxMenu.appendChild(nameEl);
+
+  makeItem("👁 Selecionar", () => selectMesh(mesh));
+  makeItem("🚫 Ocultar", () => hideMesh(mesh));
+  makeItem("🎯 Isolar", () => {
+    selectMesh(mesh);
+    isolateMesh(mesh);
+  });
+  makeItem("↺ Mostrar tudo", showAllMeshes);
+  makeItem("🔎 Pesquisar sobre esta estrutura", () => searchStructure(mesh.name));
+
+  ctxMenu.hidden = false;
+  // mantem o menu dentro da janela
+  const menuW = 240;
+  const menuH = ctxMenu.children.length * 34 + 12;
+  const left = Math.min(x, window.innerWidth - menuW - 8);
+  const top = Math.min(y, window.innerHeight - menuH - 8);
+  ctxMenu.style.left = `${left}px`;
+  ctxMenu.style.top = `${top}px`;
+}
+
+renderer.domElement.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  const mesh = meshAtEvent(event);
+  if (!mesh) {
+    hideContextMenu();
+    return;
+  }
+  selectMesh(mesh);
+  showContextMenu(event.clientX, event.clientY, mesh);
+});
+
+window.addEventListener("click", (event) => {
+  if (!ctxMenu.hidden && !ctxMenu.contains(event.target)) hideContextMenu();
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") hideContextMenu();
+});
+window.addEventListener("blur", hideContextMenu);
 
 // --- toolbar ---
 function syncEyeIcons() {
@@ -341,9 +426,8 @@ function syncEyeIcons() {
   });
 }
 
-document.getElementById("btn-isolate").addEventListener("click", () => {
-  if (!state.selected) return;
-  const keepBase = baseName(state.selected.name).toLowerCase();
+function isolateMesh(mesh) {
+  const keepBase = baseName(mesh.name).toLowerCase();
   for (const cat of Object.values(state.categories)) {
     if (!cat.root) continue;
     cat.root.traverse((child) => {
@@ -353,9 +437,9 @@ document.getElementById("btn-isolate").addEventListener("click", () => {
     });
   }
   syncEyeIcons();
-});
+}
 
-document.getElementById("btn-reset").addEventListener("click", () => {
+function showAllMeshes() {
   for (const cat of Object.values(state.categories)) {
     if (!cat.root) continue;
     cat.root.traverse((child) => {
@@ -363,7 +447,27 @@ document.getElementById("btn-reset").addEventListener("click", () => {
     });
   }
   syncEyeIcons();
+}
+
+function hideMesh(mesh) {
+  mesh.visible = false;
+  syncEyeIcons();
+  if (state.selected === mesh) closeInfoPanel();
+}
+
+function searchStructure(nodeName) {
+  const pt = displayName(nodeName);
+  const query = `${pt} anatomia função`;
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  window.open(url, "_blank", "noopener");
+}
+
+document.getElementById("btn-isolate").addEventListener("click", () => {
+  if (!state.selected) return;
+  isolateMesh(state.selected);
 });
+
+document.getElementById("btn-reset").addEventListener("click", showAllMeshes);
 
 // --- sidebar build ---
 function buildSidebar(manifest) {
@@ -518,7 +622,7 @@ window.__debug = { state, scene, camera, renderer, THREE };
 
 async function loadPhotosConfig() {
   try {
-    const res = await fetch("../data/photos.json");
+    const res = await fetch("../data/photos.json", { cache: "no-store" });
     const raw = await res.json();
     const normalized = {};
     for (const [k, v] of Object.entries(raw)) {
@@ -533,7 +637,7 @@ async function loadPhotosConfig() {
 }
 
 async function init() {
-  const res = await fetch("../data/glb/manifest.json");
+  const res = await fetch("../data/glb/manifest.json", { cache: "no-store" });
   state.manifest = await res.json();
   await loadPhotosConfig();
   buildSidebar(state.manifest);
