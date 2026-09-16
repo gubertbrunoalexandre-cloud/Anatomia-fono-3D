@@ -502,14 +502,32 @@ function isolateMesh(mesh) {
   syncEyeIcons();
 }
 
-function showAllMeshes() {
-  for (const cat of Object.values(state.categories)) {
-    if (!cat.root) continue;
-    cat.root.traverse((child) => {
-      if (child.isMesh) child.visible = true;
-    });
+async function showAllMeshes() {
+  // "Mostrar tudo" precisa realmente mostrar tudo: carrega qualquer categoria
+  // que ainda nao tinha sido aberta, marca a caixinha dela e reexibe cada
+  // malha individual (que pode ter sido escondida pelo icone de olho ou por
+  // "Isolar"). Antes so agia em categorias ja carregadas e nao remarcava a
+  // caixinha, entao uma categoria desmarcada continuava sumida.
+  const resetBtn = document.getElementById("btn-reset");
+  const originalLabel = resetBtn.textContent;
+  resetBtn.textContent = "Carregando…";
+  resetBtn.disabled = true;
+  try {
+    for (const [catKey, cat] of Object.entries(state.categories)) {
+      if (!cat.loaded) await loadCategory(catKey);
+      if (cat.checkboxEl) cat.checkboxEl.checked = true;
+      setCategoryVisible(catKey, true);
+      if (cat.root) {
+        cat.root.traverse((child) => {
+          if (child.isMesh) child.visible = true;
+        });
+      }
+    }
+    syncEyeIcons();
+  } finally {
+    resetBtn.textContent = originalLabel;
+    resetBtn.disabled = false;
   }
-  syncEyeIcons();
 }
 
 function hideMesh(mesh) {
@@ -552,6 +570,7 @@ function buildSidebar(manifest) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = DEFAULT_CHECKED.has(catKey);
+    state.categories[catKey].checkboxEl = checkbox;
 
     const title = document.createElement("div");
     title.className = "category-title";

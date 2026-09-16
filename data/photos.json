@@ -1,4 +1,21 @@
 {
   "_readme": "Mapa de fotos por estrutura. Chave = nome da estrutura em ingles (o mesmo nome base usado internamente, ex.: 'Thyroid cartilage'), normalizado automaticamente pelo app (minusculo, sem acentos/pontuacao). Valor = nome do arquivo dentro de data/photos/. Para adicionar uma foto: 1) coloque o arquivo de imagem em data/photos/ 2) adicione uma linha aqui com a chave e o nome do arquivo. Nao precisa mexer em nenhum codigo.",
-  "_exemplo": "\"thyroid cartilage\": \"thyroid-cartilage.jpg\""
+  "_exemplo": "\"thyroid cartilage\": \"thyroid-cartilage.jpg\"",
+  "_atribuicoes": "Ver data/photos/ATTRIBUTIONS.md para fonte, autor e licenca de cada imagem (todas do Wikimedia Commons, dominio publico ou CC BY/CC BY-SA compativel).",
+
+  "thyroid cartilage": "larynx_cartilages.svg",
+  "cricoid cartilage": "cricoid_cartilage.png",
+  "arytenoid cartilage": "arytenoid_cartilage.png",
+  "epiglottis": "epiglottis.png",
+  "tongue": "tongue.jpg",
+  "pharynx": "pharynx.jpg",
+  "oropharynx": "pharynx.jpg",
+  "nasopharynx": "pharynx.jpg",
+  "laryngopharynx": "pharynx.jpg",
+  "soft palate": "soft_palate.jpg",
+  "articular disc of temporomandibular joint": "tmj_disc.svg",
+  "trigeminal nerve v": "trigeminal_nerve.png",
+  "facial nerve vii": "facial_nerve.svg",
+  "vagus nerve x": "vagus_nerve.png",
+  "hypoglossal nerve xii": "hypoglossal_nerve.png"
 }

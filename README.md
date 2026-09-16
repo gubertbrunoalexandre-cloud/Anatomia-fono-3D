@@ -98,26 +98,35 @@ ver seção de descrições abaixo).
   sem descarregá-la da cena. "Mostrar tudo", "Isolar selecionada" e o menu de
   contexto sincronizam esses ícones.
 - **Painel de informação**: nome em português (Terminologia Anatomica) com o
-  nome em inglês como referência, descrição detalhada, espaço para foto
-  (placeholder por enquanto — ver "Como adicionar fotos" abaixo) e um botão
-  que abre uma busca do Google (`nome + anatomia função`) em nova aba.
+  nome em inglês como referência, descrição detalhada, foto ilustrativa (15
+  estruturas já têm — ver "Fotos explicativas" abaixo — as demais mostram um
+  placeholder) e um botão que abre uma busca do Google (`nome + anatomia
+  função`) em nova aba.
 - **Busca** por nome (português ou inglês) na lista lateral.
 - **Marcos ósseos como pinos clicáveis**: forames, canais e suturas do crânio
   não têm malha própria no dataset fonte (ver seção dedicada abaixo) — são
   representados como pequenas esferas laranja posicionadas exatamente no
   ponto anatômico correto, clicáveis como qualquer outra peça.
 
-## Como adicionar fotos das estruturas
+## Fotos explicativas
 
-Sem precisar mexer em nenhum código:
+15 estruturas já têm foto (via Wikimedia Commons, domínio público ou CC
+BY/CC BY-SA compatível — ver `data/photos/ATTRIBUTIONS.md` para fonte, autor
+e licença de cada uma): cartilagem tireoide, cricoide, aritenoide, epiglote,
+língua, faringe (+ oro/naso/laringofaringe), palato mole, disco articular da
+ATM, e os nervos trigêmeo, facial, vago e hipoglosso. As demais ~284
+estruturas mostram o placeholder "foto em breve".
 
-1. Coloque o arquivo de imagem (jpg/png/webp) em `data/photos/`.
+**Como adicionar mais fotos** (sem precisar mexer em nenhum código):
+
+1. Coloque o arquivo de imagem (jpg/png/webp/svg) em `data/photos/`.
 2. Abra `data/photos.json` e adicione uma linha:
    `"nome da estrutura em ingles": "nome-do-arquivo.jpg"`
    (o nome-chave é normalizado automaticamente — minúsculas, sem pontuação —
    então não precisa se preocupar com maiúsculas/acentos exatos, mas use o
    nome em inglês que aparece como "(en: ...)" no painel de detalhes).
-3. Salve e recarregue a página. Se o arquivo não existir ou o nome não bater,
+3. Anote a fonte/autor/licença em `data/photos/ATTRIBUTIONS.md`.
+4. Salve e recarregue a página. Se o arquivo não existir ou o nome não bater,
    o placeholder "foto em breve" continua aparecendo — nunca quebra a página.
 
 ## Pipeline de dados
@@ -194,6 +203,9 @@ em `descriptions_en` até alguém traduzir e adicionar a chave correspondente
 - **Descrições textuais** — adaptadas da Wikipédia (CC BY-SA 3.0) e traduzidas
   para português; um pequeno conjunto (39 estruturas) usa texto de conhecimento
   anatômico geral escrito para este projeto, sinalizado como tal no app.
+- **Fotos explicativas** — Wikimedia Commons, domínio público (a maioria,
+  Gray's Anatomy 1918 e Grant's Atlas 1962) ou CC BY/CC BY-SA (ver
+  `data/photos/ATTRIBUTIONS.md` para a lista completa, imagem por imagem).
 
 Uso comercial é permitido em todas essas licenças, desde que a atribuição seja
 mantida e qualquer obra derivada continue sob licença compatível (ShareAlike).
@@ -275,5 +287,5 @@ alguma para ancorar um marcador, então não há como incluí-los com fidelidade
   exportação, seguindo o mesmo padrão dos outros nervos).
 - Sem modo quiz ainda (mencionado no briefing original como funcionalidade do
   Anatomy 3D Atlas a ser eventualmente replicada).
-- Sistema de fotos ainda sem nenhuma foto real carregada (estrutura pronta,
-  ver "Como adicionar fotos" acima).
+- Só 15 das ~299 estruturas têm foto ilustrativa por enquanto (ver seção
+  "Fotos explicativas" acima) — as demais mostram o placeholder.
