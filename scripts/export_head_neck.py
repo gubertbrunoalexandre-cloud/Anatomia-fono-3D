@@ -35,7 +35,7 @@ CATEGORIES = {
     "cavidade_oral_lingua": [
         'tongue', 'lingual', 'palate', 'palatine', 'lip', 'labial', 'cheek', 'buccal', 'gingiva',
         ' gum', 'floor of mouth', 'oral cavity', 'parotid', 'submandibular gland', 'sublingual gland',
-        'frenulum', 'oral vestibule', 'philtrum',
+        'frenulum', 'oral vestibule', 'philtrum', 'genioglossus', 'hyoglossus',
     ],
     "faringe": [
         'pharyn', 'tonsil', 'adenoid', 'nasopharynx', 'oropharynx', 'laryngopharynx',
@@ -89,10 +89,43 @@ CATEGORIES = {
         'incisive foramen', 'palatine foramen',
     ],
     "musculos_pescoco": [
+        # nota: o dataset usa a nomenclatura "colli" (nao "cervicis") para varios
+        # desses musculos - a versao anterior desta lista tinha "cervicis" e por
+        # isso nunca pegava longissimus/semispinalis/iliocostalis/multifidus.
         'sternocleidomastoid', 'trapezius', 'scalenus', 'longus colli', 'longus capitis',
         'splenius capitis', 'splenius colli', 'levator scapulae', 'platysma',
-        'longissimus capitis', 'longissimus cervicis', 'semispinalis cervicis',
-        'iliocostalis cervicis', 'multifidus cervicis',
+        'longissimus capitis', 'longissimus colli', 'semispinalis colli',
+        'iliocostalis colli', 'multifidus colli', 'spinalis capitis', 'spinalis colli',
+        'interspinales colli',
+    ],
+    "musculos_suboccipitais": [
+        'obliquus inferior capitis', 'obliquus superior capitis',
+        'rectus posterior major capitis', 'rectus posterior minor capitis',
+        'rectus anterior capitis', 'rectus lateralis capitis',
+    ],
+    "musculos_supra_infra_hioideos": [
+        'digastric', 'geniohyoid', 'mylohyoid', 'stylohyoid',
+        'omohyoid', 'sternohyoid', 'sternothyroid', 'thyrohyoid muscle',
+    ],
+    "musculos_mastigacao": [
+        'temporalis muscle', 'masseter', 'medial pterygoid muscle', 'lateral pterygoid muscle',
+        'superior head of lateral pterygoid', 'inferior head of lateral pterygoid',
+    ],
+    "musculos_faciais": [
+        'frontalis', 'occipitalis', 'temporoparietalis', 'corrugator supercilii',
+        'nasalis muscle', 'procerus', 'orbicularis oculi', 'orbicularis oris',
+        'mentalis', 'risorius', 'zygomaticus major', 'zygomaticus minor',
+        'levator labii superioris', 'levator anguli oris', 'depressor anguli oris',
+        'depressor labii inferioris', 'levator palpebrae superioris',
+    ],
+    "musculos_extraoculares": [
+        'inferior rectus muscle', 'superior rectus muscle', 'medial rectus muscle',
+        'lateral rectus muscle', 'inferior oblique muscle', 'superior oblique muscle',
+        'trochlea of superior oblique',
+    ],
+    "vertebras_cervicais": [
+        'atlas (c1)', 'axis (c2)', 'vertebra c3', 'vertebra c4', 'vertebra c5',
+        'vertebra c6', 'vertebra c7', 'intervertebral disc c',
     ],
     "regioes_superficie": [
         'auricular region', 'buccal region', 'frontal region', 'infra-orbital region',
@@ -155,6 +188,12 @@ LANDMARK_MARKERS = {
     "Limbous suture": "Limbous suture.j",
     "Plane suture": "Plane suture.j",
     "Serrate suture": "Serrate suture.j",
+    # coluna cervical - mesmo padrao (ganchos sem malha propria)
+    "Canal for vertebral artery": "(Canal for vertebral artery).j",
+    "Foramen transversarium": "Foramen transversarium.j",
+    "Facet for dens": "Facet for dens.j",
+    "Groove for spinal nerve": "Groove for spinal nerve.j",
+    "Uncinate process of vertebra": "Uncinate process of vertebra.j",
 }
 
 MARKER_RADIUS = 0.0035

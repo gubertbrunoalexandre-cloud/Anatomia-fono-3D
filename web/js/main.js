@@ -23,6 +23,12 @@ const CATEGORY_LABELS = {
   regioes_superficie: "Regiões de superfície (pele)",
   orelha_nariz_cartilagem: "Cartilagens da orelha e nariz",
   marcos_osseos: "Marcos ósseos (forames, canais, suturas)",
+  musculos_suboccipitais: "Músculos suboccipitais",
+  musculos_supra_infra_hioideos: "Músculos supra/infra-hióideos",
+  musculos_mastigacao: "Músculos da mastigação",
+  musculos_faciais: "Músculos faciais (expressão)",
+  musculos_extraoculares: "Músculos extraoculares",
+  vertebras_cervicais: "Vértebras cervicais",
 };
 
 const MARKER_CATEGORY = "marcos_osseos";
@@ -35,6 +41,8 @@ const state = {
   selected: null, // mesh
   framedOnce: false,
   photos: null, // config data/photos.json: normalized_key -> nome do arquivo em data/photos/
+  pins: [], // alfinetes colocados livremente: { id, group, mesh }
+  activePin: null,
 };
 
 const holder = document.getElementById("canvas-holder");
@@ -122,6 +130,115 @@ const HIGHLIGHT_MATERIAL = new THREE.MeshStandardMaterial({
   metalness: 0.1,
   side: THREE.DoubleSide,
 });
+
+// --- alfinetes moviveis (posicionados livremente pelo usuario) ---
+const PIN_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0xff2d78,
+  emissive: 0x7a0030,
+  emissiveIntensity: 0.6,
+  depthTest: false,
+});
+const PIN_MATERIAL_ACTIVE = new THREE.MeshStandardMaterial({
+  color: 0xffe14d,
+  emissive: 0x8a6a00,
+  emissiveIntensity: 0.7,
+  depthTest: false,
+});
+
+function createPinGroup() {
+  const group = new THREE.Group();
+  const stickH = 0.02;
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.0015, stickH, 8), PIN_MATERIAL);
+  stick.position.y = stickH / 2;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.006, 14, 14), PIN_MATERIAL);
+  head.position.y = stickH + 0.006;
+  group.add(stick, head);
+  group.renderOrder = 999;
+  group.traverse((o) => {
+    if (o.isMesh) {
+      o.renderOrder = 999;
+      o.userData.isPinPart = true;
+    }
+  });
+  return group;
+}
+
+function setPinActive(pin, active) {
+  const mat = active ? PIN_MATERIAL_ACTIVE : PIN_MATERIAL;
+  pin.group.traverse((o) => {
+    if (o.isMesh) o.material = mat;
+  });
+}
+
+function positionPinAtHit(pin, hit) {
+  const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+  const worldNormal = hit.face
+    ? hit.face.normal.clone().applyMatrix3(normalMatrix).normalize()
+    : new THREE.Vector3(0, 1, 0);
+  pin.group.position.copy(hit.point);
+  pin.group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), worldNormal);
+  pin.mesh = hit.object;
+}
+
+let pinIdCounter = 0;
+function addPin(hit) {
+  const group = createPinGroup();
+  const pin = { id: ++pinIdCounter, group, mesh: hit.object };
+  positionPinAtHit(pin, hit);
+  scene.add(group);
+  state.pins.push(pin);
+  return pin;
+}
+
+function removePin(pin) {
+  scene.remove(pin.group);
+  pin.group.traverse((o) => {
+    if (o.isMesh) o.geometry.dispose();
+  });
+  state.pins = state.pins.filter((p) => p !== pin);
+  if (state.activePin === pin) {
+    state.activePin = null;
+    syncPinInfoUI();
+  }
+}
+
+function removeAllPins() {
+  for (const pin of [...state.pins]) removePin(pin);
+}
+
+function selectPin(pin) {
+  selectMesh(pin.mesh); // chama clearSelection() internamente, que zera activePin - por isso setamos depois
+  state.activePin = pin;
+  for (const p of state.pins) setPinActive(p, p === pin);
+  syncPinInfoUI();
+}
+
+function syncPinInfoUI() {
+  const badge = document.getElementById("info-pin-badge");
+  const removeBtn = document.getElementById("info-remove-pin");
+  const show = !!state.activePin;
+  badge.hidden = !show;
+  removeBtn.hidden = !show;
+}
+
+function pinAtEvent(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const p = new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -((clientY - rect.top) / rect.height) * 2 + 1
+  );
+  const rc = new THREE.Raycaster();
+  rc.setFromCamera(p, camera);
+  const pinMeshes = [];
+  for (const pin of state.pins) {
+    pin.group.traverse((o) => {
+      if (o.isMesh) o.userData.pinRef = pin;
+      if (o.isMesh) pinMeshes.push(o);
+    });
+  }
+  const hits = rc.intersectObjects(pinMeshes, false);
+  return hits.length > 0 ? hits[0].object.userData.pinRef : null;
+}
 
 window.addEventListener("resize", () => {
   camera.aspect = holder.clientWidth / holder.clientHeight;
@@ -236,6 +353,11 @@ function clearSelection() {
   }
   state.selected = null;
   document.querySelectorAll(".struct-item.active").forEach((el) => el.classList.remove("active"));
+  if (state.activePin) {
+    setPinActive(state.activePin, false);
+    state.activePin = null;
+  }
+  syncPinInfoUI();
 }
 
 function selectMesh(mesh) {
@@ -327,10 +449,10 @@ document.getElementById("info-close").addEventListener("click", closeInfoPanel);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
-function meshAtEvent(event) {
+function raycastHit(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
-  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
 
   const pickables = [];
@@ -342,12 +464,21 @@ function meshAtEvent(event) {
     }
   }
   const hits = raycaster.intersectObjects(pickables, false);
-  return hits.length > 0 ? hits[0].object : null;
+  return hits.length > 0 ? hits[0] : null;
+}
+
+function meshAtEvent(event) {
+  const hit = raycastHit(event.clientX, event.clientY);
+  return hit ? hit.object : null;
 }
 
 renderer.domElement.addEventListener("click", (event) => {
   if (longPressFired) {
     longPressFired = false; // toque longo ja tratou a selecao, ignora o click sintetico que vem junto
+    return;
+  }
+  if (pinInteractionJustHappened) {
+    pinInteractionJustHappened = false; // clique/arraste no alfinete ja tratou tudo
     return;
   }
   const mesh = meshAtEvent(event);
@@ -361,7 +492,8 @@ function hideContextMenu() {
   ctxMenu.hidden = true;
 }
 
-function showContextMenu(x, y, mesh) {
+function showContextMenu(x, y, hit) {
+  const mesh = hit.object;
   const pt = displayName(mesh.name);
   ctxMenu.innerHTML = "";
 
@@ -383,6 +515,10 @@ function showContextMenu(x, y, mesh) {
   ctxMenu.appendChild(nameEl);
 
   makeItem("👁 Selecionar", () => selectMesh(mesh));
+  makeItem("📌 Colocar alfinete aqui", () => {
+    const pin = addPin(hit);
+    selectPin(pin);
+  });
   makeItem("🚫 Ocultar", () => hideMesh(mesh));
   makeItem("🎯 Isolar", () => {
     selectMesh(mesh);
@@ -403,13 +539,48 @@ function showContextMenu(x, y, mesh) {
 
 renderer.domElement.addEventListener("contextmenu", (event) => {
   event.preventDefault();
-  const mesh = meshAtEvent(event);
-  if (!mesh) {
+  const hit = raycastHit(event.clientX, event.clientY);
+  if (!hit) {
     hideContextMenu();
     return;
   }
-  selectMesh(mesh);
-  showContextMenu(event.clientX, event.clientY, mesh);
+  selectMesh(hit.object);
+  showContextMenu(event.clientX, event.clientY, hit);
+});
+
+// --- selecionar/arrastar alfinetes com o botao esquerdo do mouse ---
+let draggingPin = null;
+let pinDownPos = null;
+let pinMoved = false;
+let pinInteractionJustHappened = false;
+
+renderer.domElement.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return; // so botao esquerdo
+  const pin = pinAtEvent(event.clientX, event.clientY);
+  if (!pin) return;
+  draggingPin = pin;
+  pinDownPos = { x: event.clientX, y: event.clientY };
+  pinMoved = false;
+  controls.enabled = false; // impede a orbita da camera enquanto mexe no alfinete
+});
+
+renderer.domElement.addEventListener("pointermove", (event) => {
+  if (!draggingPin) return;
+  const dx = event.clientX - pinDownPos.x;
+  const dy = event.clientY - pinDownPos.y;
+  if (Math.hypot(dx, dy) > 3) pinMoved = true;
+  if (!pinMoved) return;
+  const hit = raycastHit(event.clientX, event.clientY);
+  if (hit) positionPinAtHit(draggingPin, hit);
+});
+
+window.addEventListener("pointerup", () => {
+  if (!draggingPin) return;
+  const pin = draggingPin;
+  draggingPin = null;
+  controls.enabled = true;
+  pinInteractionJustHappened = true;
+  selectPin(pin); // seleciona (clique simples) ou atualiza a info pra nova posicao (apos arrastar)
 });
 
 // --- toque longo (celular) equivale ao botao direito ---
@@ -426,11 +597,11 @@ renderer.domElement.addEventListener("touchstart", (event) => {
   touchStartPos = { x: touch.clientX, y: touch.clientY };
   clearTimeout(touchTimer);
   touchTimer = setTimeout(() => {
-    const mesh = meshAtEvent(touch);
-    if (mesh) {
+    const hit = raycastHit(touch.clientX, touch.clientY);
+    if (hit) {
       longPressFired = true;
-      selectMesh(mesh);
-      showContextMenu(touch.clientX, touch.clientY, mesh);
+      selectMesh(hit.object);
+      showContextMenu(touch.clientX, touch.clientY, hit);
       if (navigator.vibrate) navigator.vibrate(15);
     }
   }, 550);
@@ -549,6 +720,15 @@ document.getElementById("btn-isolate").addEventListener("click", () => {
 });
 
 document.getElementById("btn-reset").addEventListener("click", showAllMeshes);
+
+document.getElementById("btn-remove-all-pins").addEventListener("click", removeAllPins);
+
+document.getElementById("info-remove-pin").addEventListener("click", () => {
+  if (state.activePin) {
+    removePin(state.activePin);
+    closeInfoPanel();
+  }
+});
 
 // --- sidebar build ---
 function buildSidebar(manifest) {

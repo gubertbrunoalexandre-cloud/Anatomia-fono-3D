@@ -1,11 +1,13 @@
 # Anatomia 3D — Cabeça e Pescoço (Fonoaudiologia)
 
 Ferramenta de estudo de anatomia 3D em português, cobrindo cabeça e pescoço por
-completo: cérebro, ossos do crânio, músculos do pescoço, laringe/pregas vocais,
-cavidade oral e língua, faringe, ATM, cartilagens da orelha e do nariz, marcos
-ósseos (forames, canais, suturas), os 11 nervos cranianos do currículo de
-Fonoaudiologia (I–V, VII, IX–XII) e regiões de superfície (o mais próximo que o
-dataset fonte tem de "pele", que não existe como malha separada).
+completo: cérebro, ossos do crânio, vértebras cervicais, músculos do pescoço
+(incluindo suboccipitais, supra/infra-hióideos, mastigação, faciais/expressão e
+extraoculares), laringe/pregas vocais, cavidade oral e língua, faringe, ATM,
+cartilagens da orelha e do nariz, marcos ósseos (forames, canais, suturas), os
+11 nervos cranianos do currículo de Fonoaudiologia (I–V, VII, IX–XII) e regiões
+de superfície (o mais próximo que o dataset fonte tem de "pele", que não existe
+como malha separada).
 
 ## Como rodar
 
@@ -55,7 +57,7 @@ anatomia-fono-3d/
 │   ├── descriptions_fallback.json           # textos de conhecimento geral p/ estruturas sem artigo
 │   ├── photos.json                          # config de fotos por estrutura (ver abaixo)
 │   ├── photos/                              # arquivos de imagem referenciados por photos.json
-│   └── glb/                                 # modelos exportados (20 arquivos .glb + manifest.json)
+│   └── glb/                                 # modelos exportados (26 arquivos .glb + manifest.json)
 ├── scripts/
 │   └── export_head_neck.py                  # script headless do Blender que gera os .glb
 ├── web/
@@ -64,17 +66,20 @@ anatomia-fono-3d/
 └── README.md
 ```
 
-## Categorias exportadas (20)
+## Categorias exportadas (26)
 
 Laringe e pregas vocais · Cavidade oral e língua · Faringe · ATM · Nervos
 cranianos I, II, III, IV, V, VII, IX, X, XI, XII (cada um sua própria categoria)
-· Cérebro · Ossos do crânio · Músculos do pescoço · Regiões de superfície ·
-Cartilagens da orelha e nariz · Marcos ósseos (forames, canais, suturas).
+· Cérebro · Ossos do crânio · Vértebras cervicais · Músculos do pescoço ·
+Músculos suboccipitais · Músculos supra/infra-hióideos · Músculos da
+mastigação · Músculos faciais (expressão) · Músculos extraoculares · Regiões
+de superfície · Cartilagens da orelha e nariz · Marcos ósseos (forames,
+canais, suturas).
 
-299 estruturas únicas (nome+descrição), ~584 objetos de geometria, ~24 MB no
-total (carregados sob demanda por categoria, não tudo de uma vez). **100% das
-299 estruturas têm descrição em português** (real ou de conhecimento geral,
-ver seção de descrições abaixo).
+375 estruturas únicas (nome+descrição), ~25,8 MB no total (carregados sob
+demanda por categoria, não tudo de uma vez). **100% das 375 estruturas têm
+descrição em português** (real ou de conhecimento geral, ver seção de
+descrições abaixo).
 
 ## Funcionalidades do visualizador
 
@@ -107,6 +112,18 @@ ver seção de descrições abaixo).
   não têm malha própria no dataset fonte (ver seção dedicada abaixo) — são
   representados como pequenas esferas laranja posicionadas exatamente no
   ponto anatômico correto, clicáveis como qualquer outra peça.
+- **Alfinetes de anotação livre (📌)**: para fissuras, canais e outros pontos
+  que nem têm um marco pré-cadastrado, dá pra cravar um alfinete em qualquer
+  lugar da superfície do modelo — clique com o botão direito (ou toque longo)
+  na peça desejada e escolha "Colocar alfinete aqui". O alfinete mostra as
+  informações da peça em que foi colocado (nome, categoria, descrição), pode
+  ser arrastado para reposicionar (botão esquerdo do mouse, arrastar) e vários
+  podem coexistir ao mesmo tempo. O alfinete selecionado fica amarelo, os
+  demais ficam magenta; clicar num alfinete o seleciona e mostra suas
+  informações (com o selo "📌 Via alfinete" no painel). Dois botões cuidam da
+  limpeza: "🗑 Remover este alfinete" (no painel de detalhes, remove só o
+  selecionado) e "📌 Remover alfinetes" (na barra de ferramentas, remove
+  todos de uma vez).
 
 ## Fotos explicativas
 
@@ -114,7 +131,7 @@ ver seção de descrições abaixo).
 BY/CC BY-SA compatível — ver `data/photos/ATTRIBUTIONS.md` para fonte, autor
 e licença de cada uma): cartilagem tireoide, cricoide, aritenoide, epiglote,
 língua, faringe (+ oro/naso/laringofaringe), palato mole, disco articular da
-ATM, e os nervos trigêmeo, facial, vago e hipoglosso. As demais ~284
+ATM, e os nervos trigêmeo, facial, vago e hipoglosso. As demais ~360
 estruturas mostram o placeholder "foto em breve".
 
 **Como adicionar mais fotos** (sem precisar mexer em nenhum código):
@@ -165,10 +182,10 @@ estruturas mostram o placeholder "foto em breve".
      (`bpy.data.texts`, um artigo por estrutura, derivado da Wikipédia) e grava
      tudo em `manifest.json` como `descriptions_en`.
    - Cria pequenas esferas-marcador (`create_landmark_markers`) na posição
-     exata dos ~31 forames/canais/suturas do crânio confirmados no dataset
-     fonte, já que esses "buracos" e juntas ósseas não têm malha própria (ver
-     seção dedicada abaixo) — e as injeta no pipeline normal como se fossem
-     objetos comuns.
+     exata dos ~36 forames/canais/suturas do crânio e da coluna cervical
+     confirmados no dataset fonte, já que esses "buracos" e juntas ósseas não
+     têm malha própria (ver seção dedicada abaixo) — e as injeta no pipeline
+     normal como se fossem objetos comuns.
    - Exporta um `.glb` por categoria.
    - No final, **mescla automaticamente** `data/descriptions_pt_overrides.json`
      (traduções PT-BR reais) e `data/descriptions_fallback.json` (textos de
@@ -201,7 +218,7 @@ em `descriptions_en` até alguém traduzir e adicionar a chave correspondente
 - **Cranial Nerves and Foramina** — University of Dundee, CAHID, CC-BY 4.0.
 - **Terminologia em português** — tradução de Ana Teresa Bigio para o Z-Anatomy.
 - **Descrições textuais** — adaptadas da Wikipédia (CC BY-SA 3.0) e traduzidas
-  para português; um pequeno conjunto (39 estruturas) usa texto de conhecimento
+  para português; um pequeno conjunto (44 estruturas) usa texto de conhecimento
   anatômico geral escrito para este projeto, sinalizado como tal no app.
 - **Fotos explicativas** — Wikimedia Commons, domínio público (a maioria,
   Gray's Anatomy 1918 e Grant's Atlas 1962) ou CC BY/CC BY-SA (ver
@@ -256,15 +273,17 @@ e as suturas coronal/sagital/lambdóidea por nome próprio (só existem 4
 entradas genéricas descrevendo *tipos* de sutura: denteada, plana, serreada,
 limbosa).
 
-**Solução adotada**: para os 31 marcos que existem no dataset (mesmo sem
-malha), criei uma pequena esfera-marcador exatamente na posição 3D do ponto
-de ancoragem original e a tratei como uma peça normal no pipeline — aparece
-como um pino laranja clicável no modelo, com nome e descrição (31 das 39
-sem artigo próprio na Wikipédia; escrevi o restante). Estão na categoria
-"Marcos ósseos". Para os que **não existem em lugar nenhum do dataset**
-(forame jugular, meato acústico etc.), não há posição 3D de referência
-alguma para ancorar um marcador, então não há como incluí-los com fidelidade
-— ficam de fora até uma fonte de dados diferente ser incorporada.
+**Solução adotada**: para os 36 marcos que existem no dataset (mesmo sem
+malha, incluindo canal da artéria vertebral, forame transverso, faceta do
+dente do áxis e sulco do nervo espinhal nas vértebras cervicais), criei uma
+pequena esfera-marcador exatamente na posição 3D do ponto de ancoragem
+original e a tratei como uma peça normal no pipeline — aparece como um pino
+laranja clicável no modelo, com nome e descrição. Estão na categoria "Marcos
+ósseos". Para os que **não existem em lugar nenhum do dataset** (forame
+jugular, meato acústico etc.), não há posição 3D de referência alguma para
+ancorar um marcador — para esses casos (ou qualquer outra fissura/canal sem
+marco pré-cadastrado), use o **alfinete de anotação livre (📌)** descrito
+acima, que pode ser posicionado em qualquer ponto da superfície do modelo.
 
 ## Limitações conhecidas / próximos passos
 
@@ -287,5 +306,5 @@ alguma para ancorar um marcador, então não há como incluí-los com fidelidade
   exportação, seguindo o mesmo padrão dos outros nervos).
 - Sem modo quiz ainda (mencionado no briefing original como funcionalidade do
   Anatomy 3D Atlas a ser eventualmente replicada).
-- Só 15 das ~299 estruturas têm foto ilustrativa por enquanto (ver seção
+- Só 15 das ~375 estruturas têm foto ilustrativa por enquanto (ver seção
   "Fotos explicativas" acima) — as demais mostram o placeholder.
